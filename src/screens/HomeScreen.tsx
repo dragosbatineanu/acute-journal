@@ -90,6 +90,7 @@ export default function HomeScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
         contentContainerStyle={styles.filterRow}
       >
         <TouchableOpacity
@@ -231,9 +232,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.subtext,
   },
+  filterScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   filterRow: {
     paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
     gap: theme.spacing.sm,
     alignItems: 'center',
   },
