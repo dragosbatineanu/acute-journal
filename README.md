@@ -89,4 +89,4 @@ Ideas not yet built:
 
 ## License
 
-This project is currently unlicensed (all rights reserved). Add a license file if you'd like to make reuse terms explicit.
+Released under the [MIT License](LICENSE).
