@@ -87,6 +87,13 @@ export default function HomeScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.themeBtn}
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityLabel="Settings"
+          >
+            <Text style={styles.gearText}>⚙️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.themeBtn}
             onPress={toggle}
             accessibilityLabel={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
@@ -252,6 +259,9 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
   themeBtnText: {
     fontSize: 18,
     color: theme.colors.subtext,
+  },
+  gearText: {
+    fontSize: 16,
   },
   addBtn: {
     width: 36,
