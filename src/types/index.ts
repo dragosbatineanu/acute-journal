@@ -12,6 +12,7 @@ export interface JournalEntry {
   next: string;
   mood: Mood;
   important: boolean;
+  tags: string[];
 }
 
 export const MOODS: Mood[] = [

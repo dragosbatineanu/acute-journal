@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JournalEntry, Mood, MOODS, RootStackParamList } from '../types';
-import { loadEntries } from '../storage/entries';
+import { getAllTags, loadEntries } from '../storage/entries';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
 import EntryCard from '../components/EntryCard';
@@ -27,6 +27,7 @@ export default function HomeScreen() {
   const [search, setSearch] = useState('');
   const [moodFilter, setMoodFilter] = useState<Mood | null>(null);
   const [importantOnly, setImportantOnly] = useState(false);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,9 +38,12 @@ export default function HomeScreen() {
   const filtered = entries.filter((e) => {
     if (moodFilter && e.mood.label !== moodFilter.label) return false;
     if (importantOnly && !e.important) return false;
+    if (tagFilter && !e.tags.some((t) => t.toLowerCase() === tagFilter.toLowerCase())) {
+      return false;
+    }
     if (search) {
       const q = search.toLowerCase();
-      const match = [e.happened, e.meaning, e.next, e.mood.label].some((t) =>
+      const match = [e.happened, e.meaning, e.next, e.mood.label, ...e.tags].some((t) =>
         t.toLowerCase().includes(q)
       );
       if (!match) return false;
@@ -48,15 +52,32 @@ export default function HomeScreen() {
   });
 
   const importantCount = entries.filter((e) => e.important).length;
+  const allTags = getAllTags(entries);
+  const noFilter = !moodFilter && !importantOnly && !tagFilter;
+  const hasActiveQuery = !!search || !!moodFilter || importantOnly || !!tagFilter;
+
+  function clearFilters() {
+    setMoodFilter(null);
+    setImportantOnly(false);
+    setTagFilter(null);
+  }
 
   function toggleMoodFilter(mood: Mood) {
     setMoodFilter((prev) => (prev?.label === mood.label ? null : mood));
     setImportantOnly(false);
+    setTagFilter(null);
   }
 
   function toggleImportant() {
     setImportantOnly((prev) => !prev);
     setMoodFilter(null);
+    setTagFilter(null);
+  }
+
+  function toggleTagFilter(tag: string) {
+    setTagFilter((prev) => (prev === tag ? null : tag));
+    setMoodFilter(null);
+    setImportantOnly(false);
   }
 
   return (
@@ -106,10 +127,10 @@ export default function HomeScreen() {
         contentContainerStyle={styles.filterRow}
       >
         <TouchableOpacity
-          style={[styles.chip, !moodFilter && !importantOnly && styles.chipActive]}
-          onPress={() => { setMoodFilter(null); setImportantOnly(false); }}
+          style={[styles.chip, noFilter && styles.chipActive]}
+          onPress={clearFilters}
         >
-          <Text style={[styles.chipText, !moodFilter && !importantOnly && styles.chipTextActive]}>
+          <Text style={[styles.chipText, noFilter && styles.chipTextActive]}>
             All
           </Text>
         </TouchableOpacity>
@@ -141,6 +162,19 @@ export default function HomeScreen() {
             </TouchableOpacity>
           );
         })}
+
+        {allTags.map((tag) => {
+          const active = tagFilter === tag;
+          return (
+            <TouchableOpacity
+              key={`tag-${tag}`}
+              style={[styles.chip, active && styles.chipActive]}
+              onPress={() => toggleTagFilter(tag)}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>#{tag}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {entries.length > 0 && (
@@ -167,10 +201,10 @@ export default function HomeScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>
-              {search || moodFilter || importantOnly ? 'No matches' : 'No entries yet'}
+              {hasActiveQuery ? 'No matches' : 'No entries yet'}
             </Text>
             <Text style={styles.emptyHint}>
-              {search || moodFilter || importantOnly
+              {hasActiveQuery
                 ? 'Try different filters or search terms'
                 : 'Tap + to write your first entry'}
             </Text>

@@ -97,6 +97,22 @@ export default function EntryDetailScreen() {
           </>
         ) : null}
 
+        {entry.tags.length > 0 ? (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.section}>
+              <Text style={styles.questionLabel}>Tags</Text>
+              <View style={styles.tagWrap}>
+                {entry.tags.map((tag) => (
+                  <View key={tag} style={styles.tagChip}>
+                    <Text style={styles.tagChipText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </>
+        ) : null}
+
         <View style={styles.bottomSpace} />
       </ScrollView>
 
@@ -194,6 +210,24 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
     fontSize: theme.fontSize.lg,
     color: theme.colors.text,
     lineHeight: 28,
+  },
+  tagWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  tagChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+  },
+  tagChipText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.subtext,
+    fontWeight: '500',
   },
   bottomSpace: {
     height: theme.spacing.xl,

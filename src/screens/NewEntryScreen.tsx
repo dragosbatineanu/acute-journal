@@ -1,9 +1,8 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,10 +15,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JournalEntry, MOODS, Mood, RootStackParamList } from '../types';
-import { addEntry, createId, updateEntry } from '../storage/entries';
+import {
+  addEntry,
+  createId,
+  getAllTags,
+  loadEntries,
+  normalizeTags,
+  updateEntry,
+} from '../storage/entries';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
 import MoodPicker from '../components/MoodPicker';
+import TagInput from '../components/TagInput';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'NewEntry'>;
 type Route = RouteProp<RootStackParamList, 'NewEntry'>;
@@ -36,7 +43,13 @@ export default function NewEntryScreen() {
   const [next, setNext] = useState(existing?.next ?? '');
   const [mood, setMood] = useState<Mood>(existing?.mood ?? MOODS[0]);
   const [important, setImportant] = useState(existing?.important ?? false);
+  const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadEntries().then((all) => setTagSuggestions(getAllTags(all)));
+  }, []);
 
   const meaningRef = useRef<TextInput>(null);
   const nextRef = useRef<TextInput>(null);
@@ -64,6 +77,7 @@ export default function NewEntryScreen() {
       next: next.trim(),
       mood,
       important,
+      tags: normalizeTags(tags),
     };
     if (existing) {
       await updateEntry(entry);
@@ -87,7 +101,7 @@ export default function NewEntryScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         keyboardVerticalOffset={0}
       >
         <ScrollView
@@ -154,6 +168,15 @@ export default function NewEntryScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Mood</Text>
             <MoodPicker selected={mood} onSelect={setMood} />
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Tags</Text>
+            <View style={styles.tagSection}>
+              <TagInput tags={tags} suggestions={tagSuggestions} onChange={setTags} />
+            </View>
           </View>
 
           <View style={styles.divider} />
@@ -261,6 +284,9 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
     textTransform: 'uppercase',
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.sm,
+  },
+  tagSection: {
+    paddingHorizontal: theme.spacing.md,
   },
   importantRow: {
     flexDirection: 'row',

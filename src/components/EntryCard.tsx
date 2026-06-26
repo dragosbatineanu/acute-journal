@@ -10,9 +10,13 @@ interface Props {
   onPress: () => void;
 }
 
+const MAX_VISIBLE_TAGS = 3;
+
 export default function EntryCard({ entry, onPress }: Props) {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const visibleTags = entry.tags.slice(0, MAX_VISIBLE_TAGS);
+  const overflow = entry.tags.length - visibleTags.length;
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.65}>
       <View style={styles.header}>
@@ -26,6 +30,16 @@ export default function EntryCard({ entry, onPress }: Props) {
       <Text style={styles.happened} numberOfLines={2}>
         {entry.happened}
       </Text>
+      {entry.tags.length > 0 && (
+        <View style={styles.tagWrap}>
+          {visibleTags.map((tag) => (
+            <View key={tag} style={styles.tagChip}>
+              <Text style={styles.tagChipText} numberOfLines={1}>{tag}</Text>
+            </View>
+          ))}
+          {overflow > 0 && <Text style={styles.tagMore}>+{overflow}</Text>}
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -72,5 +86,31 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
     lineHeight: 22,
+  },
+  tagWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: theme.spacing.sm,
+  },
+  tagChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    maxWidth: 140,
+  },
+  tagChipText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.subtext,
+    fontWeight: '500',
+  },
+  tagMore: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    fontWeight: '600',
   },
 });
