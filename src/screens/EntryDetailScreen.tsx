@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -12,7 +12,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { deleteEntry } from '../storage/entries';
-import { theme } from '../theme';
+import { Theme } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import { formatFullDate } from '../utils/date';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'EntryDetail'>;
@@ -21,6 +22,8 @@ type Route = RouteProp<RootStackParamList, 'EntryDetail'>;
 export default function EntryDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [entry, setEntry] = useState(route.params.entry);
 
   function handleEdit() {
@@ -106,7 +109,7 @@ export default function EntryDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: theme.colors.background,

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Mood, MOODS } from '../types';
-import { theme } from '../theme';
+import { Theme } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 
 interface Props {
   selected?: Mood;
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export default function MoodPicker({ selected, onSelect }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <ScrollView
       horizontal
@@ -39,7 +42,7 @@ export default function MoodPicker({ selected, onSelect }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => StyleSheet.create({
   row: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,

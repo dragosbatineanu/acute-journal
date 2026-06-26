@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   ScrollView,
@@ -13,13 +13,16 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JournalEntry, Mood, MOODS, RootStackParamList } from '../types';
 import { loadEntries } from '../storage/entries';
-import { theme } from '../theme';
+import { Theme } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import EntryCard from '../components/EntryCard';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
+  const { theme, mode, toggle } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [search, setSearch] = useState('');
   const [moodFilter, setMoodFilter] = useState<Mood | null>(null);
@@ -60,13 +63,22 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Acute</Text>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => navigation.navigate('NewEntry', undefined)}
-          accessibilityLabel="New entry"
-        >
-          <Text style={styles.addBtnText}>+</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.themeBtn}
+            onPress={toggle}
+            accessibilityLabel={mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            <Text style={styles.themeBtnText}>{mode === 'dark' ? '☀' : '☾'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => navigation.navigate('NewEntry', undefined)}
+            accessibilityLabel="New entry"
+          >
+            <Text style={styles.addBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchWrap}>
@@ -169,7 +181,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -187,6 +199,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.text,
     letterSpacing: -0.5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  themeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeBtnText: {
+    fontSize: 18,
+    color: theme.colors.subtext,
   },
   addBtn: {
     width: 36,

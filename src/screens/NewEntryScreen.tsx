@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,7 +15,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JournalEntry, MOODS, Mood, RootStackParamList } from '../types';
 import { addEntry, createId, updateEntry } from '../storage/entries';
-import { theme } from '../theme';
+import { Theme } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import MoodPicker from '../components/MoodPicker';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'NewEntry'>;
@@ -25,6 +26,8 @@ export default function NewEntryScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const existing = route.params?.entry;
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [happened, setHappened] = useState(existing?.happened ?? '');
   const [meaning, setMeaning] = useState(existing?.meaning ?? '');
@@ -175,7 +178,7 @@ export default function NewEntryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: theme.colors.background,

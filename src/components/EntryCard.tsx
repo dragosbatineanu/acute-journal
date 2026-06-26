@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { JournalEntry } from '../types';
-import { theme } from '../theme';
+import { Theme } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import { formatShortDate } from '../utils/date';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export default function EntryCard({ entry, onPress }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.65}>
       <View style={styles.header}>
@@ -27,7 +30,7 @@ export default function EntryCard({ entry, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => StyleSheet.create({
   container: {
     backgroundColor: theme.colors.card,
     marginHorizontal: theme.spacing.md,
