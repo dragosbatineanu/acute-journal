@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -38,6 +40,15 @@ export default function NewEntryScreen() {
 
   const meaningRef = useRef<TextInput>(null);
   const nextRef = useRef<TextInput>(null);
+  const saveScale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(saveScale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  }
+
+  function pressOut() {
+    Animated.spring(saveScale, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  }
 
   async function handleSave() {
     if (!happened.trim()) {
@@ -59,6 +70,7 @@ export default function NewEntryScreen() {
     } else {
       await addEntry(entry);
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSaving(false);
     navigation.goBack();
   }
@@ -164,14 +176,18 @@ export default function NewEntryScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save entry'}</Text>
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: saveScale }] }}>
+            <TouchableOpacity
+              style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+              onPress={handleSave}
+              onPressIn={pressIn}
+              onPressOut={pressOut}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save entry'}</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

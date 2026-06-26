@@ -1,5 +1,12 @@
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import {
+  Animated,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Mood, MOODS } from '../types';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
@@ -7,6 +14,47 @@ import { useTheme } from '../theme/ThemeContext';
 interface Props {
   selected?: Mood;
   onSelect: (mood: Mood) => void;
+}
+
+type Styles = ReturnType<typeof makeStyles>;
+
+interface ChipProps {
+  mood: Mood;
+  active: boolean;
+  styles: Styles;
+  onSelect: (mood: Mood) => void;
+}
+
+function MoodChip({ mood, active, styles, onSelect }: ChipProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function handlePress() {
+    Haptics.selectionAsync();
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.08, useNativeDriver: true, speed: 50, bounciness: 14 }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 8 }),
+    ]).start();
+    onSelect(mood);
+  }
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <TouchableOpacity
+        style={[
+          styles.chip,
+          active && {
+            borderColor: mood.color,
+            backgroundColor: mood.color + '20',
+          },
+        ]}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.emoji}>{mood.emoji}</Text>
+        <Text style={[styles.label, active && { color: mood.color }]}>{mood.label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
 }
 
 export default function MoodPicker({ selected, onSelect }: Props) {
@@ -18,26 +66,15 @@ export default function MoodPicker({ selected, onSelect }: Props) {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
-      {MOODS.map((mood) => {
-        const active = selected?.label === mood.label;
-        return (
-          <TouchableOpacity
-            key={mood.label}
-            style={[
-              styles.chip,
-              active && {
-                borderColor: mood.color,
-                backgroundColor: mood.color + '20',
-              },
-            ]}
-            onPress={() => onSelect(mood)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.emoji}>{mood.emoji}</Text>
-            <Text style={[styles.label, active && { color: mood.color }]}>{mood.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
+      {MOODS.map((mood) => (
+        <MoodChip
+          key={mood.label}
+          mood={mood}
+          active={selected?.label === mood.label}
+          styles={styles}
+          onSelect={onSelect}
+        />
+      ))}
     </ScrollView>
   );
 }
