@@ -15,6 +15,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import NewEntryScreen from './src/screens/NewEntryScreen';
 import EntryDetailScreen from './src/screens/EntryDetailScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import InsightsScreen from './src/screens/InsightsScreen';
 import LockScreen from './src/screens/LockScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -69,6 +70,7 @@ function Root() {
             <Stack.Screen name="NewEntry" component={NewEntryScreen} />
             <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Insights" component={InsightsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </Gate>
