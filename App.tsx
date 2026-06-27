@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { RootStackParamList } from './src/types';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { LockProvider, useLock } from './src/lock/LockContext';
+import { configureNotifications, syncReminderOnLaunch } from './src/notifications/reminders';
 import HomeScreen from './src/screens/HomeScreen';
 import NewEntryScreen from './src/screens/NewEntryScreen';
 import EntryDetailScreen from './src/screens/EntryDetailScreen';
@@ -90,6 +91,12 @@ function Root() {
 }
 
 export default function App() {
+  // Set up the notification handler/channel, then re-assert any saved daily
+  // reminder so the schedule survives reinstalls and OS housekeeping.
+  React.useEffect(() => {
+    configureNotifications().then(syncReminderOnLaunch);
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

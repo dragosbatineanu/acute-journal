@@ -15,6 +15,7 @@ Everything is stored locally on your device. No account, no sync, no servers.
 - **Photo attachments** — add photos from your library or camera to an entry (up to six). Images are downscaled and compressed on device, shown as a gallery with tap-to-zoom, and included in backups.
 - **Search & filter** — full-text search across entries plus quick filter chips for moods, important, and tags.
 - **Insights** — a dedicated screen that charts your mood distribution and most-used tags as color-coded bars, switchable between all time and the last 30 days. Reached from Settings.
+- **Daily reminder** — an optional local notification at a time you choose, to nudge you to write. Scheduled on-device with no servers; toggle it and set the time in Settings.
 - **Light & dark themes** — a warm-paper light theme and a dark theme, toggled from Settings (or the home header) and remembered between launches.
 - **App lock** — optionally gate the app behind your device credentials (fingerprint, face unlock, or PIN/pattern). Re-locks whenever the app leaves the foreground, so your journal is also hidden in the app switcher. Toggle it in Settings.
 - **Backup & restore** — export all entries (photos included) to a JSON file you can save or share, and import one back later. Imports are merged in and duplicates are skipped, so restoring is non-destructive. Backup files are unencrypted plain text.
@@ -32,6 +33,7 @@ Everything is stored locally on your device. No account, no sync, no servers.
 - [`expo-local-authentication`](https://docs.expo.dev/versions/v54.0.0/sdk/local-authentication/) for the app lock
 - [`expo-file-system`](https://docs.expo.dev/versions/v54.0.0/sdk/filesystem/), [`expo-sharing`](https://docs.expo.dev/versions/v54.0.0/sdk/sharing/), and [`expo-document-picker`](https://docs.expo.dev/versions/v54.0.0/sdk/document-picker/) for backup export & import
 - [`expo-image-picker`](https://docs.expo.dev/versions/v54.0.0/sdk/imagepicker/) and [`expo-image-manipulator`](https://docs.expo.dev/versions/v54.0.0/sdk/imagemanipulator/) for photo attachments
+- [`expo-notifications`](https://docs.expo.dev/versions/v54.0.0/sdk/notifications/) for the daily reminder (local notifications) and [`@react-native-community/datetimepicker`](https://github.com/react-native-datetimepicker/datetimepicker) for choosing the time
 
 ## Getting started
 
@@ -58,7 +60,7 @@ npm run web      # run in the browser
 ## Project structure
 
 ```
-App.tsx                     # Providers, lock gate, navigation container, status bar
+App.tsx                     # Providers, lock gate, navigation container, notification setup
 src/
   components/
     EntryCard.tsx           # Entry preview card (mood, date, tags, photo thumb)
@@ -68,12 +70,14 @@ src/
   lock/
     LockContext.tsx         # App-lock state, persistence, re-lock on background
     externalActivity.ts     # Suppresses re-lock during trusted system UI
+  notifications/
+    reminders.ts            # Daily reminder prefs, permissions, and scheduling
   screens/
     HomeScreen.tsx          # Entry list, search, and filter chips
     NewEntryScreen.tsx      # Create/edit an entry
     EntryDetailScreen.tsx   # Read a full entry
     InsightsScreen.tsx      # Mood distribution and top-tag charts
-    SettingsScreen.tsx      # App lock, theme, and backup settings
+    SettingsScreen.tsx      # Reminder, app lock, theme, and backup settings
     LockScreen.tsx          # Biometric/credential unlock screen
   storage/
     entries.ts              # AsyncStorage CRUD and tag helpers
@@ -93,11 +97,10 @@ src/
 
 Ideas not yet built:
 
-- Daily writing streak and reminders
+- Daily writing streak
 - Mood trends over time (time-series charts)
 - Calendar / timeline view
 - "On this day" resurfacing
-- Voice-to-text capture
 - Editable / custom moods
 
 ## License
