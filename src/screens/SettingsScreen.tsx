@@ -97,6 +97,21 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Insights</Text>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => navigation.navigate('Insights')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>Mood distribution</Text>
+            <Text style={styles.rowHint}>See your mood mix across all entries or the last 30 days.</Text>
+          </View>
+          <Text style={styles.rowValue}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionLabel}>Privacy</Text>
         <View style={styles.row}>
           <View style={styles.rowText}>

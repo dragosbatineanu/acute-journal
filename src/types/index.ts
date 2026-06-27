@@ -37,4 +37,5 @@ export type RootStackParamList = {
   NewEntry: { entry?: JournalEntry } | undefined;
   EntryDetail: { entry: JournalEntry };
   Settings: undefined;
+  Insights: undefined;
 };
