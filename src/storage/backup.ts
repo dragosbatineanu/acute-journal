@@ -3,17 +3,23 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { JournalEntry, Mood, MOODS } from '../types';
 import { createId, loadEntries, normalizeTags, saveEntries } from './entries';
+import { MAX_PHOTOS_PER_ENTRY, readPhotoBase64, writePhotoBase64 } from './photos';
+import { withExternalActivity } from '../lock/externalActivity';
 
 // Bump SCHEMA whenever the on-disk entry shape changes so a future importer
 // can detect and migrate older backups instead of silently mis-reading them.
 const SCHEMA = 1;
 const APP_ID = 'acute';
 
+// In a backup, photos travel as base64 blobs rather than filenames, since
+// filenames reference files that only exist on the originating device.
+type ExportEntry = Omit<JournalEntry, 'photos'> & { photosData: string[] };
+
 interface BackupFile {
   app: string;
   schema: number;
   exportedAt: string;
-  entries: JournalEntry[];
+  entries: ExportEntry[];
 }
 
 function backupFileName(date = new Date()): string {
@@ -34,11 +40,23 @@ export async function exportBackup(): Promise<ExportResult> {
     return { status: 'empty', count: 0 };
   }
 
+  // Inline each entry's photos as base64 so the backup is fully self-contained.
+  const exportEntries: ExportEntry[] = [];
+  for (const entry of entries) {
+    const photosData: string[] = [];
+    for (const name of entry.photos) {
+      const b64 = await readPhotoBase64(name);
+      if (b64) photosData.push(b64); // skip references whose file is missing
+    }
+    const { photos, ...rest } = entry;
+    exportEntries.push({ ...rest, photosData });
+  }
+
   const payload: BackupFile = {
     app: APP_ID,
     schema: SCHEMA,
     exportedAt: new Date().toISOString(),
-    entries,
+    entries: exportEntries,
   };
 
   const file = new File(Paths.cache, backupFileName());
@@ -51,11 +69,13 @@ export async function exportBackup(): Promise<ExportResult> {
     return { status: 'unavailable', count: entries.length };
   }
 
-  await Sharing.shareAsync(file.uri, {
-    mimeType: 'application/json',
-    dialogTitle: 'Export Acute backup',
-    UTI: 'public.json',
-  });
+  await withExternalActivity(() =>
+    Sharing.shareAsync(file.uri, {
+      mimeType: 'application/json',
+      dialogTitle: 'Export Acute backup',
+      UTI: 'public.json',
+    })
+  );
   return { status: 'shared', count: entries.length };
 }
 
@@ -83,7 +103,22 @@ function coerceMood(raw: unknown): Mood | null {
   return null;
 }
 
-function coerceEntry(raw: unknown): JournalEntry | null {
+function coercePhotosData(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item === 'string' && item.length > 0) out.push(item);
+    if (out.length >= MAX_PHOTOS_PER_ENTRY) break;
+  }
+  return out;
+}
+
+interface ParsedEntry {
+  entry: JournalEntry;
+  photosData: string[];
+}
+
+function coerceEntry(raw: unknown): ParsedEntry | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
 
@@ -98,18 +133,22 @@ function coerceEntry(raw: unknown): JournalEntry | null {
   if (!happened && !meaning && !next) return null;
 
   return {
-    id: typeof r.id === 'string' && r.id ? r.id : createId(),
-    createdAt: r.createdAt,
-    happened,
-    meaning,
-    next,
-    mood,
-    important: r.important === true,
-    tags: normalizeTags(Array.isArray(r.tags) ? (r.tags as string[]) : []),
+    entry: {
+      id: typeof r.id === 'string' && r.id ? r.id : createId(),
+      createdAt: r.createdAt,
+      happened,
+      meaning,
+      next,
+      mood,
+      important: r.important === true,
+      tags: normalizeTags(Array.isArray(r.tags) ? (r.tags as string[]) : []),
+      photos: [], // resolved from photosData only for entries we keep
+    },
+    photosData: coercePhotosData(r.photosData),
   };
 }
 
-function parseBackup(text: string): { entries: JournalEntry[]; invalid: number } {
+function parseBackup(text: string): { items: ParsedEntry[]; invalid: number } {
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -128,27 +167,29 @@ function parseBackup(text: string): { entries: JournalEntry[]; invalid: number }
   }
 
   let invalid = 0;
-  const entries: JournalEntry[] = [];
+  const items: ParsedEntry[] = [];
   for (const raw of rawEntries) {
-    const entry = coerceEntry(raw);
-    if (entry) entries.push(entry);
+    const parsed = coerceEntry(raw);
+    if (parsed) items.push(parsed);
     else invalid++;
   }
-  return { entries, invalid };
+  return { items, invalid };
 }
 
 export async function importBackup(): Promise<ImportResult> {
   const empty: ImportResult = { canceled: true, added: 0, skipped: 0, invalid: 0, total: 0 };
 
-  const picked = await DocumentPicker.getDocumentAsync({
-    type: 'application/json',
-    copyToCacheDirectory: true,
-    multiple: false,
-  });
+  const picked = await withExternalActivity(() =>
+    DocumentPicker.getDocumentAsync({
+      type: 'application/json',
+      copyToCacheDirectory: true,
+      multiple: false,
+    })
+  );
   if (picked.canceled) return empty;
 
   const file = new File(picked.assets[0].uri);
-  const { entries: incoming, invalid } = parseBackup(await file.text());
+  const { items, invalid } = parseBackup(await file.text());
 
   // Merge, skipping duplicates by id (non-destructive restore).
   const current = await loadEntries();
@@ -156,11 +197,22 @@ export async function importBackup(): Promise<ImportResult> {
   const merged = [...current];
   let added = 0;
   let skipped = 0;
-  for (const entry of incoming) {
+  for (const { entry, photosData } of items) {
     if (ids.has(entry.id)) {
       skipped++;
       continue;
     }
+    // Write photo files only for entries we actually keep, so a skipped
+    // duplicate never leaves orphaned image files behind.
+    const photos: string[] = [];
+    for (const b64 of photosData) {
+      try {
+        photos.push(await writePhotoBase64(b64));
+      } catch {
+        // Skip a single bad photo rather than failing the whole import.
+      }
+    }
+    entry.photos = photos;
     ids.add(entry.id);
     merged.push(entry);
     added++;

@@ -153,7 +153,7 @@ export default function SettingsScreen() {
           <Text style={styles.rowValue}>↘</Text>
         </TouchableOpacity>
         <Text style={styles.sectionFooter}>
-          Backup files are unencrypted — anyone with the file can read your entries.
+          Backup files are unencrypted — anyone with the file can read your entries and photos.
         </Text>
       </View>
     </SafeAreaView>

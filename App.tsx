@@ -51,23 +51,28 @@ function Root() {
   };
 
   return (
-    <Gate>
-      <NavigationContainer theme={navTheme}>
-        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: theme.colors.background },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="NewEntry" component={NewEntryScreen} />
-          <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </Gate>
+    // A themed backdrop behind the whole navigator. Without it, the native
+    // screen transition can briefly expose the host window (white) as the
+    // outgoing screen slides away.
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <Gate>
+        <NavigationContainer theme={navTheme}>
+          <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: theme.colors.background },
+              animation: 'slide_from_right',
+            }}
+          >
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="NewEntry" component={NewEntryScreen} />
+            <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </Gate>
+    </View>
   );
 }
 

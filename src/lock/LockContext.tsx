@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isLockSuppressed } from './externalActivity';
 
 const STORAGE_KEY = '@acute:lockEnabled';
 
@@ -44,8 +45,10 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
       // Re-arm the lock whenever the app leaves the foreground. We deliberately
       // ignore 'inactive' so the system biometric prompt — which briefly makes
-      // the app inactive on iOS — doesn't re-lock us mid-authentication.
-      if (next === 'background' && lockEnabledRef.current) {
+      // the app inactive on iOS — doesn't re-lock us mid-authentication. We also
+      // skip re-locking while a trusted system UI (photo picker, camera, share
+      // sheet, document picker) has intentionally backgrounded the app.
+      if (next === 'background' && lockEnabledRef.current && !isLockSuppressed()) {
         setIsLocked(true);
       }
     });

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Image,
   KeyboardAvoidingView,
   ScrollView,
   StyleSheet,
@@ -25,6 +26,14 @@ import {
 } from '../storage/entries';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
+import {
+  MAX_PHOTOS_PER_ENTRY,
+  cleanupRemovedPhotos,
+  deletePhotos,
+  photoUri,
+  pickFromLibrary,
+  takePhoto,
+} from '../storage/photos';
 import MoodPicker from '../components/MoodPicker';
 import TagInput from '../components/TagInput';
 
@@ -44,12 +53,66 @@ export default function NewEntryScreen() {
   const [mood, setMood] = useState<Mood>(existing?.mood ?? MOODS[0]);
   const [important, setImportant] = useState(existing?.important ?? false);
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
+  const [photos, setPhotos] = useState<string[]>(existing?.photos ?? []);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Files persisted during this editing session. Used to clean up photos the
+  // user added but never committed (e.g. they back out without saving).
+  const sessionAddedRef = useRef<string[]>([]);
+  const savedRef = useRef(false);
 
   useEffect(() => {
     loadEntries().then((all) => setTagSuggestions(getAllTags(all)));
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (!savedRef.current && sessionAddedRef.current.length > 0) {
+        deletePhotos(sessionAddedRef.current);
+      }
+    };
+  }, []);
+
+  async function addPhotos(source: 'camera' | 'library') {
+    const remaining = MAX_PHOTOS_PER_ENTRY - photos.length;
+    if (remaining <= 0) {
+      Alert.alert('Photo limit', `You can attach up to ${MAX_PHOTOS_PER_ENTRY} photos.`);
+      return;
+    }
+    const res = source === 'camera' ? await takePhoto() : await pickFromLibrary(remaining);
+    if (res.status === 'denied') {
+      Alert.alert(
+        'Permission needed',
+        source === 'camera'
+          ? 'Allow camera access in your device settings to take photos.'
+          : 'Allow photo access in your device settings to attach photos.'
+      );
+      return;
+    }
+    if (res.status === 'canceled') return;
+    sessionAddedRef.current = [...sessionAddedRef.current, ...res.filenames];
+    setPhotos((prev) => [...prev, ...res.filenames].slice(0, MAX_PHOTOS_PER_ENTRY));
+  }
+
+  function onAddPhotoPress() {
+    Alert.alert('Add photo', undefined, [
+      { text: 'Take photo', onPress: () => addPhotos('camera') },
+      { text: 'Choose from library', onPress: () => addPhotos('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  function removePhoto(filename: string) {
+    setPhotos((prev) => prev.filter((p) => p !== filename));
+    // A photo added this session isn't referenced by any saved entry yet, so
+    // its file is safe to delete now. Original photos are kept until save, so
+    // backing out preserves them.
+    if (sessionAddedRef.current.includes(filename)) {
+      sessionAddedRef.current = sessionAddedRef.current.filter((p) => p !== filename);
+      deletePhotos([filename]);
+    }
+  }
 
   const meaningRef = useRef<TextInput>(null);
   const nextRef = useRef<TextInput>(null);
@@ -78,12 +141,17 @@ export default function NewEntryScreen() {
       mood,
       important,
       tags: normalizeTags(tags),
+      photos,
     };
     if (existing) {
+      // Delete files for photos that were on the entry but have been removed.
+      cleanupRemovedPhotos(existing.photos, photos);
       await updateEntry(entry);
     } else {
       await addEntry(entry);
     }
+    // Saved: keep the session's photos and let the unmount cleanup skip them.
+    savedRef.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSaving(false);
     navigation.goBack();
@@ -177,6 +245,37 @@ export default function NewEntryScreen() {
             <View style={styles.tagSection}>
               <TagInput tags={tags} suggestions={tagSuggestions} onChange={setTags} />
             </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Photos</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.photoRow}
+              keyboardShouldPersistTaps="handled"
+            >
+              {photos.map((name) => (
+                <View key={name} style={styles.photoThumbWrap}>
+                  <Image source={{ uri: photoUri(name) }} style={styles.photoThumb} />
+                  <TouchableOpacity
+                    style={styles.photoRemove}
+                    onPress={() => removePhoto(name)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.photoRemoveText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {photos.length < MAX_PHOTOS_PER_ENTRY && (
+                <TouchableOpacity style={styles.photoAdd} onPress={onAddPhotoPress} activeOpacity={0.7}>
+                  <Text style={styles.photoAddIcon}>＋</Text>
+                  <Text style={styles.photoAddLabel}>Photo</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
           </View>
 
           <View style={styles.divider} />
@@ -287,6 +386,61 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
   },
   tagSection: {
     paddingHorizontal: theme.spacing.md,
+  },
+  photoRow: {
+    paddingHorizontal: theme.spacing.md,
+    gap: theme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  photoThumbWrap: {
+    position: 'relative',
+  },
+  photoThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemoveText: {
+    fontSize: 15,
+    lineHeight: 18,
+    color: theme.colors.text,
+  },
+  photoAdd: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderStyle: 'dashed',
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  photoAddIcon: {
+    fontSize: 22,
+    color: theme.colors.subtext,
+  },
+  photoAddLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.subtext,
   },
   importantRow: {
     flexDirection: 'row',
