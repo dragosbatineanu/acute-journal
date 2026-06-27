@@ -14,6 +14,7 @@ Everything is stored locally on your device. No account, no sync, no servers.
 - **Important moments** — star entries to mark and filter the ones that matter.
 - **Photo attachments** — add photos from your library or camera to an entry (up to six). Images are downscaled and compressed on device, shown as a gallery with tap-to-zoom, and included in backups.
 - **Search & filter** — full-text search across entries plus quick filter chips for moods, important, and tags.
+- **Insights** — a dedicated screen that charts your mood distribution and most-used tags as color-coded bars, switchable between all time and the last 30 days. Reached from Settings.
 - **Light & dark themes** — a warm-paper light theme and a dark theme, toggled from Settings (or the home header) and remembered between launches.
 - **App lock** — optionally gate the app behind your device credentials (fingerprint, face unlock, or PIN/pattern). Re-locks whenever the app leaves the foreground, so your journal is also hidden in the app switcher. Toggle it in Settings.
 - **Backup & restore** — export all entries (photos included) to a JSON file you can save or share, and import one back later. Imports are merged in and duplicates are skipped, so restoring is non-destructive. Backup files are unencrypted plain text.
@@ -62,6 +63,7 @@ src/
   components/
     EntryCard.tsx           # Entry preview card (mood, date, tags, photo thumb)
     MoodPicker.tsx          # Horizontal mood selector with a select animation
+    StatBar.tsx             # Reusable labeled bar for the Insights charts
     TagInput.tsx            # Tag editor with chips and suggestions
   lock/
     LockContext.tsx         # App-lock state, persistence, re-lock on background
@@ -70,6 +72,7 @@ src/
     HomeScreen.tsx          # Entry list, search, and filter chips
     NewEntryScreen.tsx      # Create/edit an entry
     EntryDetailScreen.tsx   # Read a full entry
+    InsightsScreen.tsx      # Mood distribution and top-tag charts
     SettingsScreen.tsx      # App lock, theme, and backup settings
     LockScreen.tsx          # Biometric/credential unlock screen
   storage/
@@ -83,6 +86,7 @@ src/
     index.ts                # JournalEntry, Mood, navigation types
   utils/
     date.ts                 # Date formatting helpers
+    stats.ts                # Mood- and tag-distribution helpers for Insights
 ```
 
 ## Roadmap
@@ -90,12 +94,11 @@ src/
 Ideas not yet built:
 
 - Daily writing streak and reminders
-- Mood trends over time
+- Mood trends over time (time-series charts)
 - Calendar / timeline view
 - "On this day" resurfacing
 - Voice-to-text capture
 - Editable / custom moods
-- Writing stats
 
 ## License
 
