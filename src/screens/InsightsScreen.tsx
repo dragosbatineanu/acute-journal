@@ -5,9 +5,10 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JournalEntry, RootStackParamList } from '../types';
 import { loadEntries } from '../storage/entries';
-import { moodDistribution } from '../utils/stats';
+import { moodDistribution, tagFrequency } from '../utils/stats';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
+import StatBar from '../components/StatBar';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Insights'>;
 
@@ -41,9 +42,12 @@ export default function InsightsScreen() {
   }, [entries, range]);
 
   const stats = useMemo(() => moodDistribution(ranged), [ranged]);
-  // Scale bars to the most frequent mood so the longest bar always fills the
-  // track; percentages still reflect the true share of entries in range.
+  const tagStats = useMemo(() => tagFrequency(ranged), [ranged]);
+  // Scale each chart's bars to its own most-frequent item so the longest bar
+  // always fills the track; percentages still reflect the true share of entries
+  // in range.
   const maxCount = stats.length > 0 ? stats[0].count : 0;
+  const maxTagCount = tagStats.length > 0 ? tagStats[0].count : 0;
   const total = ranged.length;
 
   return (
@@ -101,33 +105,40 @@ export default function InsightsScreen() {
               </Text>
 
               <View style={styles.chart}>
-            {stats.map(({ mood, count, percent }) => (
-              <View key={mood.label} style={styles.barRow}>
-                <View style={styles.barHeader}>
-                  <Text style={styles.barLabel}>
-                    {mood.emoji}  <Text style={{ color: mood.color }}>{mood.label}</Text>
-                  </Text>
-                  <Text style={styles.barCount}>
-                    {count}
-                    <Text style={styles.barPercent}>  {percent}%</Text>
-                  </Text>
-                </View>
-                <View style={styles.track}>
-                  <View
-                    style={[
-                      styles.fill,
-                      {
-                        backgroundColor: mood.color,
-                        // Guard against a zero-width division; maxCount is only
-                        // 0 when there are no stats, which is handled above.
-                        width: `${maxCount > 0 ? (count / maxCount) * 100 : 0}%`,
-                      },
-                    ]}
+                {stats.map(({ mood, count, percent }) => (
+                  <StatBar
+                    key={mood.label}
+                    label={
+                      <Text>
+                        {mood.emoji}  <Text style={{ color: mood.color }}>{mood.label}</Text>
+                      </Text>
+                    }
+                    count={count}
+                    percent={percent}
+                    color={mood.color}
+                    fillRatio={maxCount > 0 ? count / maxCount : 0}
                   />
-                </View>
-              </View>
                 ))}
               </View>
+
+              {tagStats.length > 0 && (
+                <>
+                  <Text style={[styles.sectionLabel, styles.sectionSpacer]}>Top tags</Text>
+                  <Text style={styles.summary}>Share of entries that carry each tag</Text>
+                  <View style={styles.chart}>
+                    {tagStats.map(({ tag, count, percent }) => (
+                      <StatBar
+                        key={tag}
+                        label={`#${tag}`}
+                        count={count}
+                        percent={percent}
+                        color={theme.colors.accent}
+                        fillRatio={maxTagCount > 0 ? count / maxTagCount : 0}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
             </>
           )}
         </ScrollView>
@@ -203,6 +214,9 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 2,
   },
+  sectionSpacer: {
+    marginTop: theme.spacing.xl,
+  },
   summary: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.muted,
@@ -210,41 +224,6 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
   },
   chart: {
     gap: theme.spacing.md,
-  },
-  barRow: {
-    gap: theme.spacing.xs,
-  },
-  barHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  barLabel: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: '600',
-    color: theme.colors.text,
-  },
-  barCount: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: '600',
-    color: theme.colors.text,
-  },
-  barPercent: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: '500',
-    color: theme.colors.subtext,
-  },
-  track: {
-    height: 10,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: theme.radius.full,
   },
   empty: {
     flex: 1,
