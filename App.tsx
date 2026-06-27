@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   DarkTheme,
   DefaultTheme,
@@ -24,15 +24,26 @@ function Gate({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const { ready, lockEnabled, isLocked } = useLock();
 
-  // Hold a plain themed screen until we know the lock preference, so entries
-  // never flash before the gate decides.
-  if (!ready) {
-    return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
-  }
-  if (lockEnabled && isLocked) {
-    return <LockScreen />;
-  }
-  return <>{children}</>;
+  // Render the lock as an opaque overlay rather than swapping the navigator out,
+  // so re-locking on background (or a system handoff) never unmounts the screen
+  // the user was on — an in-progress entry survives the lock. Until we know the
+  // lock preference, a plain themed cover hides everything so entries never flash.
+  const covered = !ready || (lockEnabled && isLocked);
+
+  return (
+    <View style={{ flex: 1 }}>
+      {children}
+      {covered && (
+        <View style={StyleSheet.absoluteFill}>
+          {ready ? (
+            <LockScreen />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: theme.colors.background }} />
+          )}
+        </View>
+      )}
+    </View>
+  );
 }
 
 function Root() {
