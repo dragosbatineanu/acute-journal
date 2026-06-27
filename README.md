@@ -18,7 +18,7 @@ Everything is stored locally on your device. No account, no sync, no servers.
 - **App lock** — optionally gate the app behind your device credentials (fingerprint, face unlock, or PIN/pattern). Re-locks whenever the app leaves the foreground, so your journal is also hidden in the app switcher. Toggle it in Settings.
 - **Backup & restore** — export all entries (photos included) to a JSON file you can save or share, and import one back later. Imports are merged in and duplicates are skipped, so restoring is non-destructive. Backup files are unencrypted plain text.
 - **Tactile feel** — haptic feedback and subtle spring animations on saving and selecting a mood.
-- **Private by design** — entries live in on-device storage (`AsyncStorage`); nothing leaves the phone.
+- **Private by design** — entries live in on-device storage (`AsyncStorage`); there's no account, sync, or telemetry. Data only leaves the phone when you explicitly export a backup.
 
 ## Tech stack
 
@@ -65,6 +65,7 @@ src/
     TagInput.tsx            # Tag editor with chips and suggestions
   lock/
     LockContext.tsx         # App-lock state, persistence, re-lock on background
+    externalActivity.ts     # Suppresses re-lock during trusted system UI
   screens/
     HomeScreen.tsx          # Entry list, search, and filter chips
     NewEntryScreen.tsx      # Create/edit an entry
