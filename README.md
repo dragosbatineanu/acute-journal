@@ -15,6 +15,7 @@ Everything is stored locally on your device. No account, no sync, no servers.
 - **Search & filter** — full-text search across entries plus quick filter chips for moods, important, and tags.
 - **Light & dark themes** — a warm-paper light theme and a dark theme, toggled from Settings (or the home header) and remembered between launches.
 - **App lock** — optionally gate the app behind your device credentials (fingerprint, face unlock, or PIN/pattern). Re-locks whenever the app leaves the foreground, so your journal is also hidden in the app switcher. Toggle it in Settings.
+- **Backup & restore** — export all entries to a JSON file you can save or share, and import one back later. Imports are merged in and duplicates are skipped, so restoring is non-destructive. Backup files are unencrypted plain text.
 - **Tactile feel** — haptic feedback and subtle spring animations on saving and selecting a mood.
 - **Private by design** — entries live in on-device storage (`AsyncStorage`); nothing leaves the phone.
 
@@ -27,6 +28,7 @@ Everything is stored locally on your device. No account, no sync, no servers.
 - [`@react-native-async-storage/async-storage`](https://react-native-async-storage.github.io/async-storage/) for persistence
 - [`expo-haptics`](https://docs.expo.dev/versions/v54.0.0/sdk/haptics/) for feedback
 - [`expo-local-authentication`](https://docs.expo.dev/versions/v54.0.0/sdk/local-authentication/) for the app lock
+- [`expo-file-system`](https://docs.expo.dev/versions/v54.0.0/sdk/filesystem/), [`expo-sharing`](https://docs.expo.dev/versions/v54.0.0/sdk/sharing/), and [`expo-document-picker`](https://docs.expo.dev/versions/v54.0.0/sdk/document-picker/) for backup export & import
 
 ## Getting started
 
@@ -65,10 +67,11 @@ src/
     HomeScreen.tsx          # Entry list, search, and filter chips
     NewEntryScreen.tsx      # Create/edit an entry
     EntryDetailScreen.tsx   # Read a full entry
-    SettingsScreen.tsx      # App lock and theme settings
+    SettingsScreen.tsx      # App lock, theme, and backup settings
     LockScreen.tsx          # Biometric/credential unlock screen
   storage/
     entries.ts              # AsyncStorage CRUD and tag helpers
+    backup.ts               # Export, import, and validation of backup files
   theme/
     index.ts                # Color palettes and design tokens
     ThemeContext.tsx        # Theme provider, useTheme hook, persistence
@@ -86,7 +89,6 @@ Ideas not yet built:
 - Mood trends over time
 - Calendar / timeline view
 - "On this day" resurfacing
-- Export / backup & import
 - Photo attachments
 - Voice-to-text capture
 - Editable / custom moods
