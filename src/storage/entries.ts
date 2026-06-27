@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { JournalEntry } from '../types';
+import { deletePhotos } from './photos';
 
 const KEY = '@acute:entries';
 
@@ -46,8 +47,12 @@ export async function loadEntries(): Promise<JournalEntry[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     const parsed: JournalEntry[] = raw ? JSON.parse(raw) : [];
-    // Older entries predate tags; ensure the field is always an array.
-    return parsed.map((e) => ({ ...e, tags: Array.isArray(e.tags) ? e.tags : [] }));
+    // Older entries predate tags/photos; ensure both fields are always arrays.
+    return parsed.map((e) => ({
+      ...e,
+      tags: Array.isArray(e.tags) ? e.tags : [],
+      photos: Array.isArray(e.photos) ? e.photos : [],
+    }));
   } catch {
     return [];
   }
@@ -73,6 +78,9 @@ export async function updateEntry(entry: JournalEntry): Promise<JournalEntry[]> 
 
 export async function deleteEntry(id: string): Promise<JournalEntry[]> {
   const all = await loadEntries();
+  const target = all.find((e) => e.id === id);
+  // Remove the entry's photo files so they don't linger as orphans.
+  if (target?.photos?.length) deletePhotos(target.photos);
   const updated = all.filter((e) => e.id !== id);
   await saveEntries(updated);
   return updated;

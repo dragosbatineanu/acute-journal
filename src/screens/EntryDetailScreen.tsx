@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +14,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { deleteEntry } from '../storage/entries';
+import { photoUri } from '../storage/photos';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
 import { formatFullDate } from '../utils/date';
@@ -25,6 +28,7 @@ export default function EntryDetailScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [entry, setEntry] = useState(route.params.entry);
+  const [zoomed, setZoomed] = useState<string | null>(null);
 
   function handleEdit() {
     navigation.navigate('NewEntry', { entry });
@@ -97,6 +101,26 @@ export default function EntryDetailScreen() {
           </>
         ) : null}
 
+        {entry.photos.length > 0 ? (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.section}>
+              <Text style={styles.questionLabel}>Photos</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.photoRow}
+              >
+                {entry.photos.map((name) => (
+                  <TouchableOpacity key={name} onPress={() => setZoomed(name)} activeOpacity={0.85}>
+                    <Image source={{ uri: photoUri(name) }} style={styles.photoThumb} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </>
+        ) : null}
+
         {entry.tags.length > 0 ? (
           <>
             <View style={styles.divider} />
@@ -121,6 +145,14 @@ export default function EntryDetailScreen() {
           <Text style={styles.deleteBtnText}>Delete entry</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={zoomed !== null} transparent animationType="fade" onRequestClose={() => setZoomed(null)}>
+        <TouchableOpacity style={styles.zoomBackdrop} activeOpacity={1} onPress={() => setZoomed(null)}>
+          {zoomed && (
+            <Image source={{ uri: photoUri(zoomed) }} style={styles.zoomImage} resizeMode="contain" />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -210,6 +242,28 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
     fontSize: theme.fontSize.lg,
     color: theme.colors.text,
     lineHeight: 28,
+  },
+  photoRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  photoThumb: {
+    width: 150,
+    height: 150,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  zoomBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomImage: {
+    width: '100%',
+    height: '100%',
   },
   tagWrap: {
     flexDirection: 'row',

@@ -13,6 +13,10 @@ export interface JournalEntry {
   mood: Mood;
   important: boolean;
   tags: string[];
+  // Filenames (not full URIs) of attached photos stored in the document dir.
+  // Resolve with photoUri() at render time so they survive container path
+  // changes across reinstalls.
+  photos: string[];
 }
 
 export const MOODS: Mood[] = [

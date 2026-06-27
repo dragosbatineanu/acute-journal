@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { JournalEntry } from '../types';
+import { photoUri } from '../storage/photos';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
 import { formatShortDate } from '../utils/date';
@@ -27,9 +28,21 @@ export default function EntryCard({ entry, onPress }: Props) {
         </View>
         <Text style={styles.date}>{formatShortDate(entry.createdAt)}</Text>
       </View>
-      <Text style={styles.happened} numberOfLines={2}>
-        {entry.happened}
-      </Text>
+      <View style={styles.body}>
+        <Text style={styles.happened} numberOfLines={2}>
+          {entry.happened}
+        </Text>
+        {entry.photos.length > 0 && (
+          <View style={styles.thumbWrap}>
+            <Image source={{ uri: photoUri(entry.photos[0]) }} style={styles.thumb} />
+            {entry.photos.length > 1 && (
+              <View style={styles.thumbBadge}>
+                <Text style={styles.thumbBadgeText}>+{entry.photos.length - 1}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
       {entry.tags.length > 0 && (
         <View style={styles.tagWrap}>
           {visibleTags.map((tag) => (
@@ -82,10 +95,46 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
     color: theme.colors.subtext,
     letterSpacing: 0.3,
   },
+  body: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+  },
   happened: {
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
     lineHeight: 22,
+    flex: 1,
+  },
+  thumbWrap: {
+    position: 'relative',
+  },
+  thumb: {
+    width: 52,
+    height: 52,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  thumbBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 4,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.accent,
+    borderWidth: 1.5,
+    borderColor: theme.colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000',
   },
   tagWrap: {
     flexDirection: 'row',
