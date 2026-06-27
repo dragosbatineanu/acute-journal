@@ -1,14 +1,31 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as LocalAuthentication from 'expo-local-authentication';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { RootStackParamList } from '../types';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
 import { useLock } from '../lock/LockContext';
 import { exportBackup, importBackup } from '../storage/backup';
+import {
+  ReminderPref,
+  DEFAULT_REMINDER,
+  loadReminderPref,
+  saveReminderPref,
+  scheduleDailyReminder,
+  cancelReminder,
+  ensureNotificationPermission,
+} from '../notifications/reminders';
+
+// Format an hour/minute as a localized clock time, e.g. "9:00 PM".
+function formatTime(hour: number, minute: number): string {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -19,6 +36,48 @@ export default function SettingsScreen() {
   const { lockEnabled, setLockEnabled } = useLock();
   const [busy, setBusy] = useState(false);
   const [dataBusy, setDataBusy] = useState(false);
+  const [reminder, setReminder] = useState<ReminderPref>(DEFAULT_REMINDER);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  useEffect(() => {
+    loadReminderPref().then(setReminder);
+  }, []);
+
+  async function onToggleReminder(next: boolean) {
+    if (reminderBusy) return;
+    setReminderBusy(true);
+    try {
+      if (next) {
+        const granted = await ensureNotificationPermission();
+        if (!granted) {
+          Alert.alert(
+            'Notifications are off',
+            'Allow notifications for Acute in your device settings to get a daily reminder.'
+          );
+          return;
+        }
+        await scheduleDailyReminder(reminder.hour, reminder.minute);
+      } else {
+        await cancelReminder();
+      }
+      const updated = { ...reminder, enabled: next };
+      setReminder(updated);
+      await saveReminderPref(updated);
+    } finally {
+      setReminderBusy(false);
+    }
+  }
+
+  async function onChangeTime(event: DateTimePickerEvent, date?: Date) {
+    // Android shows a modal dialog that dismisses itself; iOS renders inline.
+    if (Platform.OS !== 'ios') setShowTimePicker(false);
+    if (event.type === 'dismissed' || !date) return;
+    const updated = { ...reminder, hour: date.getHours(), minute: date.getMinutes() };
+    setReminder(updated);
+    await saveReminderPref(updated);
+    if (updated.enabled) await scheduleDailyReminder(updated.hour, updated.minute);
+  }
 
   async function onToggleLock(next: boolean) {
     if (busy) return;
@@ -128,6 +187,51 @@ export default function SettingsScreen() {
             thumbColor={theme.colors.surface}
           />
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Reminders</Text>
+        <View style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>Daily reminder</Text>
+            <Text style={styles.rowHint}>A gentle nudge to capture your day.</Text>
+          </View>
+          <Switch
+            value={reminder.enabled}
+            onValueChange={onToggleReminder}
+            disabled={reminderBusy}
+            trackColor={{ true: theme.colors.accent, false: theme.colors.border }}
+            thumbColor={theme.colors.surface}
+          />
+        </View>
+        {reminder.enabled && (
+          <TouchableOpacity
+            style={[styles.row, styles.rowStacked]}
+            onPress={() => setShowTimePicker((v) => !v)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>Time</Text>
+              <Text style={styles.rowHint}>When to send the reminder each day.</Text>
+            </View>
+            <Text style={styles.rowValue}>{formatTime(reminder.hour, reminder.minute)}</Text>
+          </TouchableOpacity>
+        )}
+        {reminder.enabled && showTimePicker && (
+          <View style={styles.pickerWrap}>
+            <DateTimePicker
+              value={(() => {
+                const d = new Date();
+                d.setHours(reminder.hour, reminder.minute, 0, 0);
+                return d;
+              })()}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onChangeTime}
+              themeVariant={mode}
+            />
+          </View>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -253,6 +357,13 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
   rowValue: {
     fontSize: 20,
     color: theme.colors.subtext,
+  },
+  pickerWrap: {
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
   },
   sectionFooter: {
     fontSize: theme.fontSize.xs,

@@ -34,7 +34,8 @@
           "photosPermission": "Allow Acute to attach photos from your library to entries.",
           "cameraPermission": "Allow Acute to take photos to attach to entries."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }
