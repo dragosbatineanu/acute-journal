@@ -8,6 +8,7 @@ import { RootStackParamList } from '../types';
 import { Theme } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
 import { useLock } from '../lock/LockContext';
+import { exportBackup, importBackup } from '../storage/backup';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -17,6 +18,7 @@ export default function SettingsScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { lockEnabled, setLockEnabled } = useLock();
   const [busy, setBusy] = useState(false);
+  const [dataBusy, setDataBusy] = useState(false);
 
   async function onToggleLock(next: boolean) {
     if (busy) return;
@@ -46,6 +48,41 @@ export default function SettingsScreen() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onExport() {
+    if (dataBusy) return;
+    setDataBusy(true);
+    try {
+      const res = await exportBackup();
+      if (res.status === 'empty') {
+        Alert.alert('Nothing to export', 'Write an entry first, then back it up.');
+      } else if (res.status === 'unavailable') {
+        Alert.alert('Sharing unavailable', 'This device can’t share files.');
+      }
+    } catch {
+      Alert.alert('Export failed', 'Something went wrong creating the backup.');
+    } finally {
+      setDataBusy(false);
+    }
+  }
+
+  async function onImport() {
+    if (dataBusy) return;
+    setDataBusy(true);
+    try {
+      const res = await importBackup();
+      if (res.canceled) return;
+      const parts = [`${res.added} added`];
+      if (res.skipped) parts.push(`${res.skipped} already present`);
+      if (res.invalid) parts.push(`${res.invalid} skipped (invalid)`);
+      Alert.alert('Import complete', `${parts.join(', ')}.`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not read that file.';
+      Alert.alert('Import failed', message);
+    } finally {
+      setDataBusy(false);
     }
   }
 
@@ -87,6 +124,37 @@ export default function SettingsScreen() {
           </View>
           <Text style={styles.rowValue}>{mode === 'dark' ? '☾' : '☀'}</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Data</Text>
+        <TouchableOpacity
+          style={[styles.row, dataBusy && styles.rowDisabled]}
+          onPress={onExport}
+          disabled={dataBusy}
+          activeOpacity={0.7}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>Export backup</Text>
+            <Text style={styles.rowHint}>Save all entries to a JSON file you can share or store.</Text>
+          </View>
+          <Text style={styles.rowValue}>↗</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.row, styles.rowStacked, dataBusy && styles.rowDisabled]}
+          onPress={onImport}
+          disabled={dataBusy}
+          activeOpacity={0.7}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>Import backup</Text>
+            <Text style={styles.rowHint}>Restore from a backup file. New entries are merged in; duplicates are skipped.</Text>
+          </View>
+          <Text style={styles.rowValue}>↘</Text>
+        </TouchableOpacity>
+        <Text style={styles.sectionFooter}>
+          Backup files are unencrypted — anyone with the file can read your entries.
+        </Text>
       </View>
     </SafeAreaView>
   );
@@ -146,6 +214,13 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
   },
+  rowStacked: {
+    // Avoid a doubled divider where two rows sit back to back.
+    borderTopWidth: 0,
+  },
+  rowDisabled: {
+    opacity: 0.5,
+  },
   rowText: {
     flex: 1,
   },
@@ -163,5 +238,12 @@ const makeStyles = (theme: Theme) => StyleSheet.create({
   rowValue: {
     fontSize: 20,
     color: theme.colors.subtext,
+  },
+  sectionFooter: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.muted,
+    lineHeight: 16,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
   },
 });
